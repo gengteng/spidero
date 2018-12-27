@@ -132,6 +132,7 @@ pub fn escape_default(s: &str) -> String {
 
 fn main() {
     if let Some(keyword) = std::env::args().nth(1) {
+        println!("keyword: {}", keyword);
         tokio::run(crawl_baidu(&keyword));
     } else {
         println!("no keyword provided");
