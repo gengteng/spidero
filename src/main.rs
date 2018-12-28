@@ -19,7 +19,8 @@ use reqwest::{
     r#async::{
         Client,
         Decoder,
-    }
+    },
+    Proxy
 };
 
 use html5ever::{
@@ -48,6 +49,33 @@ struct Prey {
     url: String,
     title: String,
     content: Option<String>
+}
+
+struct Spider {
+    client: Client
+}
+
+impl Spider {
+    fn hatch() -> Spider {
+        Spider {
+            client: Client::new()
+        }
+    }
+
+    fn hatch_with_proxy(proxy: Proxy) -> Result<Spider, Box<dyn std::error::Error>> {
+
+        match Client::builder().proxy(proxy).build() {
+            Ok(client) => {
+                Ok(Spider {
+                    client
+                })
+            },
+            Err(e) => {
+                Err(Box::new(e))
+            }
+        }
+    }
+
 }
 
 fn crawl_baidu(keyword: &str) -> impl Future<Item=(), Error=()> {
@@ -210,7 +238,12 @@ fn main() {
             .short("m")
             .long("bing")
             .help("search with bing")
-            .takes_value(false));
+            .takes_value(false))
+        .arg(Arg::with_name("proxy")
+            .short("x")
+            .long("proxy")
+            .help("http(s) proxy")
+            .takes_value(true));
 
     let matches = app.get_matches();
 
