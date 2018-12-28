@@ -1,20 +1,23 @@
 
-//use spidero::Prey;
+use spidero::Prey;
 use std::{
     mem,
     io::{
-        Cursor
+        Cursor,
+        Read
     },
     default::Default,
-    iter::repeat
+//    iter::repeat
 };
 use futures::{
     Future,
     Stream
 };
-use reqwest::r#async::{
-    Client,
-    Decoder
+use reqwest::{
+    r#async::{
+        Client,
+        Decoder,
+    }
 };
 
 use html5ever::{
@@ -43,46 +46,80 @@ fn crawl_baidu(keyword: &str) -> impl Future<Item=(), Error=()> {
         })
         .map_err(|err| println!("request error: {}", err))
         .map(Cursor::new)
-        .and_then(move|mut body| {
-
-//            let mut html = String::new();
-//            match body.read_to_string(&mut html) {
-//                Ok(_) => {
-//                    println!("{}", html);
-//
-//
-//
-//                    //println!("title: {} ({:?})", dom.at("title").unwrap().content().trim(), start.elapsed().unwrap())
-//                },
-//                Err(e) => eprintln!("{}", e)
-//            }
+        .and_then(move |mut body| {
 
             let opts = ParseOpts {
                 tree_builder: TreeBuilderOpts {
                     drop_doctype: true,
-                    ..Default::default()
+                    ..TreeBuilderOpts::default()
                 },
-                ..Default::default()
+                ..ParseOpts::default()
             };
 
-            let dom = parse_document(RcDom::default(), opts)
+            let result = parse_document(RcDom::default(), opts)
                 .from_utf8()
-                .read_from(&mut body)
-                .unwrap();
+                .read_from(&mut body);
 
-            let mut prey = vec![];
-            walk(&mut prey, 0, dom.document);
+            match result {
+                Ok(dom) => {
+                    let mut prey = vec![];
+                    walk(&mut prey, 0, dom.document);
 
-            prey.iter().for_each(|s| println!("{}", s));
 
-            Ok(())
+                    prey.iter().for_each(|s| {
+                        let parse = json5::from_str::<Prey>(s);
+                        match parse {
+                            Ok(mut prey) => {
+                                //println!("{:?}", prey);
+                                tokio::spawn(
+                                    Client::new()
+                                        .get(&prey.url)
+                                        //.get("http://tokio.rs")
+                                        .send()
+                                        .and_then(|mut res| {
+                                            //prey.url = res.url().clone().to_string();
+
+                                            let body = mem::replace(res.body_mut(), Decoder::empty());
+                                            body.concat2().map(Cursor::new).map_err(|e|e).and_then(move |mut body|{
+                                                let mut content = String::new();
+                                                match body.read_to_string(&mut content) {
+                                                    Ok(_) => {
+                                                        prey.url = res.url().clone().to_string();
+                                                        //prey.content = Some(content);
+
+
+                                                        println!("{}", json5::to_string(&prey).unwrap());
+
+                                                        //return Ok(());
+                                                    },
+                                                    Err(e) => {
+                                                        eprintln!("{}", e);
+                                                        //return Err(());
+                                                    }
+                                                }
+
+                                                Ok(())
+                                            })
+                                        }).map_err(|err| eprintln!("request error: {}", err))
+                                );
+                            },
+                            Err(e) => eprintln!("json deserialize error: {}", e)
+                        }
+                    });
+
+                    Ok(())
+                },
+                Err(_) => {
+                    Err(())
+                }
+            }
         })
 }
 
 fn walk(preys: &mut Vec<String>, indent: usize, handle: Handle) {
     let node = handle;
     // FIXME: don't allocate
-    print!("{}", repeat(" ").take(indent).collect::<String>());
+    //print!("{}", repeat(" ").take(indent).collect::<String>());
     match node.data {
 //        NodeData::Document => {},//println!("#Document"),
 //

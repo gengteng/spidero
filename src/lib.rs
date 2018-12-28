@@ -2,10 +2,10 @@
 extern crate serde_derive;
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct Prey<'a> {
-    pub url: &'a str,
-    pub title: &'a str,
-    pub content: &'a str
+pub struct Prey {
+    pub url: String,
+    pub title: String,
+    pub content: Option<String>
 }
 
 
