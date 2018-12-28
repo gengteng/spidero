@@ -223,10 +223,12 @@ fn main() {
 
         if matches.is_present("google") {
             println!("keyword: {}, engine: google", keyword);
+            // TODO: add google
         }
 
         if matches.is_present("bing") {
             println!("keyword: {}, engine: bing", keyword);
+            // TODO: add bing
         }
 
     } else {
