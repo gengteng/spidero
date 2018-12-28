@@ -1,7 +1,8 @@
 [package]
 name = "spidero"
 version = "0.1.0"
-authors = ["gengteng <me@gteng.org>"]
+authors = ["GengTeng <me@gteng.org>"]
+description = "Yet another search engine results crawler written in Rust."
 edition = "2018"
 
 [dependencies]
@@ -13,4 +14,6 @@ futures = "0.1"
 tokio = "0.1"
 reqwest = "0.9"
 
-html5ever = "*"
+html5ever = "0.22.5"
+
+clap = "2"

@@ -1,5 +1,7 @@
 
-use spidero::Prey;
+#[macro_use]
+extern crate serde_derive;
+
 use std::{
     mem,
     io::{
@@ -32,6 +34,21 @@ use html5ever::{
     parse_document
 };
 
+#[macro_use]
+extern crate clap;
+
+use clap::{
+    App,
+    Arg,
+    //SubCommand
+};
+
+#[derive(Debug, Serialize, Deserialize)]
+struct Prey {
+    url: String,
+    title: String,
+    content: Option<String>
+}
 
 fn crawl_baidu(keyword: &str) -> impl Future<Item=(), Error=()> {
     Client::new()
@@ -163,14 +180,55 @@ fn walk(preys: &mut Vec<String>, indent: usize, handle: Handle) {
     }
 }
 
-pub fn escape_default(s: &str) -> String {
-    s.chars().flat_map(|c| c.escape_default()).collect()
-}
+//fn escape_default(s: &str) -> String {
+//    s.chars().flat_map(|c| c.escape_default()).collect()
+//}
 
 fn main() {
-    if let Some(keyword) = std::env::args().nth(1) {
-        println!("keyword: {}", keyword);
-        tokio::run(crawl_baidu(&keyword));
+
+    let app = App::new(crate_name!())
+        .version(crate_version!())
+        .author(crate_authors!())
+        .about(crate_description!())
+        .arg(Arg::with_name("keyword")
+            .short("k")
+            .long("keyword")
+            .value_name("KEYWORD")
+            .help("keyword to search")
+            .takes_value(true))
+        .arg(Arg::with_name("google")
+            .short("g")
+            .long("google")
+            .help("search with google")
+            .takes_value(false))
+        .arg(Arg::with_name("baidu")
+            .short("b")
+            .long("baidu")
+            .help("search with baidu")
+            .takes_value(false))
+        .arg(Arg::with_name("bing")
+            .short("m")
+            .long("bing")
+            .help("search with bing")
+            .takes_value(false));
+
+    let matches = app.get_matches();
+
+    if let Some(keyword) = matches.value_of("keyword") {
+
+        if matches.is_present("baidu") {
+            println!("keyword: {}, engine: baidu", keyword);
+            tokio::run(crawl_baidu(&keyword));
+        }
+
+        if matches.is_present("google") {
+            println!("keyword: {}, engine: google", keyword);
+        }
+
+        if matches.is_present("bing") {
+            println!("keyword: {}, engine: bing", keyword);
+        }
+
     } else {
         println!("no keyword provided");
     }
