@@ -8,13 +8,15 @@ use std::{
         Cursor,
         Read
     },
-    default::Default,
+    default::Default
 //    iter::repeat
 };
 use futures::{
     Future,
-    Stream
+    Stream,
+    Poll
 };
+
 use reqwest::{
     r#async::{
         Client,
@@ -35,6 +37,11 @@ use html5ever::{
     parse_document
 };
 
+use url::{
+    Url,
+    ParseError
+};
+
 #[macro_use]
 extern crate clap;
 
@@ -53,6 +60,12 @@ struct Prey {
 
 struct Spider {
     client: Client
+}
+
+enum SearchEngine {
+    Google,
+    Baidu,
+    Bing
 }
 
 impl Spider {
@@ -76,6 +89,30 @@ impl Spider {
         }
     }
 
+    fn weave(&self, engine: SearchEngine, keyword: &str, count: u32) -> Web {
+        Web {
+            spider: self,
+            engine,
+            keyword: keyword.to_string(),
+            count
+        }
+    }
+}
+
+struct Web<'a> {
+    spider: &'a Spider,
+    engine: SearchEngine,
+    keyword: String,
+    count: u32
+}
+
+impl<'a> futures::Stream for Web<'a> {
+    type Item = Prey;
+    type Error = ();
+
+    fn poll(&mut self) -> Poll<Option<Self::Item>, Self::Error> {
+        unimplemented!()
+    }
 }
 
 fn crawl_baidu(keyword: &str) -> impl Future<Item=(), Error=()> {
@@ -218,10 +255,10 @@ fn main() {
         .version(crate_version!())
         .author(crate_authors!())
         .about(crate_description!())
-        .arg(Arg::with_name("keyword")
+        .arg(Arg::with_name("keywords")
             .short("k")
-            .long("keyword")
-            .value_name("KEYWORD")
+            .long("keywords")
+            .value_name("KEYWORDS")
             .help("keyword to search")
             .takes_value(true))
         .arg(Arg::with_name("google")
@@ -235,7 +272,7 @@ fn main() {
             .help("search with baidu")
             .takes_value(false))
         .arg(Arg::with_name("bing")
-            .short("m")
+            .short("n")
             .long("bing")
             .help("search with bing")
             .takes_value(false))
@@ -247,22 +284,63 @@ fn main() {
 
     let matches = app.get_matches();
 
-    if let Some(keyword) = matches.value_of("keyword") {
+    if let Some(keywords) = matches.value_of("keywords") {
 
-        if matches.is_present("baidu") {
-            println!("keyword: {}, engine: baidu", keyword);
-            tokio::run(crawl_baidu(&keyword));
+        let keywords: Vec<&str> = keywords.split(',').collect();
+
+        let engines = {
+            let mut v = vec![];
+            if matches.is_present("baidu") {
+                v.push("baidu");
+            }
+
+            if matches.is_present("google") {
+                v.push("google");
+            }
+
+            if matches.is_present("bing") {
+                v.push("bing");
+            }
+
+            v
+        };
+
+        if engines.len() == 0 {
+            println!("no search engine provided");
+            return;
         }
 
-        if matches.is_present("google") {
-            println!("keyword: {}, engine: google", keyword);
-            // TODO: add google
-        }
+        println!("keywords: {:?}, search engine: {:?}", keywords, engines);
 
-        if matches.is_present("bing") {
-            println!("keyword: {}, engine: bing", keyword);
-            // TODO: add bing
-        }
+        let client: Spider = if let Some(proxy_url) = matches.value_of("proxy") {
+            match Url::parse(&proxy_url) {
+                Ok(_) => {
+
+                    match Proxy::all(proxy_url) {
+                        Ok(proxy) => {
+                            match Spider::hatch_with_proxy(proxy) {
+                                Ok(spider) => spider,
+                                Err(e) => {
+                                    eprintln!("create client error: {}", e);
+                                    return;
+                                }
+                            }
+                        },
+                        Err(e) => {
+                            eprintln!("create proxy error: {}", e);
+                            return;
+                        }
+                    }
+
+                }
+                Err(e) => {
+                    eprintln!("proxy parse error: {}", e);
+                    return;
+                }
+            }
+        } else {
+            Spider::hatch()
+        };
 
     } else {
         println!("no keyword provided");

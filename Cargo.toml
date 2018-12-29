@@ -13,6 +13,7 @@ json5 = "0.2.2"
 futures = "0.1"
 tokio = "0.1"
 reqwest = "0.9"
+url = "1.7.2"
 
 html5ever = "0.22.5"
 
