@@ -11,19 +11,7 @@ use std::{
     default::Default
 //    iter::repeat
 };
-use futures::{
-    Future,
-    Stream,
-    Poll
-};
 
-use reqwest::{
-    r#async::{
-        Client,
-        Decoder,
-    },
-    Proxy
-};
 
 use html5ever::{
     driver::ParseOpts,
@@ -42,6 +30,9 @@ use url::{
     ParseError
 };
 
+mod spider;
+use self::spider::*;
+
 #[macro_use]
 extern crate clap;
 
@@ -51,69 +42,19 @@ use clap::{
     //SubCommand
 };
 
-#[derive(Debug, Serialize, Deserialize)]
-struct Prey {
-    url: String,
-    title: String,
-    content: Option<String>
-}
+use futures::{
+    Future,
+    Stream,
+    Poll
+};
 
-struct Spider {
-    client: Client
-}
-
-enum SearchEngine {
-    Google,
-    Baidu,
-    Bing
-}
-
-impl Spider {
-    fn hatch() -> Spider {
-        Spider {
-            client: Client::new()
-        }
-    }
-
-    fn hatch_with_proxy(proxy: Proxy) -> Result<Spider, Box<dyn std::error::Error>> {
-
-        match Client::builder().proxy(proxy).build() {
-            Ok(client) => {
-                Ok(Spider {
-                    client
-                })
-            },
-            Err(e) => {
-                Err(Box::new(e))
-            }
-        }
-    }
-
-    fn weave(&self, engine: SearchEngine, keyword: &str, count: u32) -> Web {
-        Web {
-            spider: self,
-            engine,
-            keyword: keyword.to_string(),
-            count
-        }
-    }
-}
-
-struct Web<'a> {
-    spider: &'a Spider,
-    engine: SearchEngine,
-    keyword: String,
-    count: u32
-}
-
-impl<'a> futures::Stream for Web<'a> {
-    type Item = Prey;
-    type Error = ();
-
-    fn poll(&mut self) -> Poll<Option<Self::Item>, Self::Error> {
-        unimplemented!()
-    }
-}
+use reqwest::{
+    r#async::{
+        Client,
+        Decoder,
+    },
+    Proxy
+};
 
 fn crawl_baidu(keyword: &str) -> impl Future<Item=(), Error=()> {
     Client::new()
@@ -345,5 +286,4 @@ fn main() {
     } else {
         println!("no keyword provided");
     }
-
 }
