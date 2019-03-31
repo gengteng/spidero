@@ -12,6 +12,8 @@ use reqwest::{
     Proxy
 };
 
+use crate::errors::SpiderError;
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Prey {
     pub url: String,
@@ -20,7 +22,7 @@ pub struct Prey {
 }
 
 pub struct Spider {
-    client: Client
+    pub client: Client
 }
 
 pub enum SearchEngine {
@@ -36,26 +38,22 @@ impl Spider {
         }
     }
 
-    pub fn hatch_with_proxy(proxy: Proxy) -> Result<Spider, Box<dyn std::error::Error>> {
+    pub fn hatch_with_proxy(proxy: Proxy) -> Result<Spider, SpiderError> {
 
-        match Client::builder().proxy(proxy).build() {
-            Ok(client) => {
-                Ok(Spider {
-                    client
-                })
-            },
-            Err(e) => {
-                Err(Box::new(e))
-            }
-        }
+        let client = Client::builder().proxy(proxy).build()?;
+
+        Ok(Spider {
+            client
+        })
     }
 
-    pub fn weave(&self, engine: SearchEngine, keyword: &str, count: u32) -> Web {
+    pub fn weave<'a>(&'a self, engine: SearchEngine, keyword: &'a str, count: u32) -> Web<'a> {
         Web {
-            spider: self,
+            spider: &self,
             engine,
-            keyword: keyword.to_string(),
-            count
+            keyword,
+            count,
+            f: None
         }
     }
 }
@@ -63,15 +61,17 @@ impl Spider {
 pub struct Web<'a> {
     spider: &'a Spider,
     engine: SearchEngine,
-    keyword: String,
-    count: u32
+    keyword: &'a str,
+    count: u32,
+    f: Option<Box<Future<Item=Vec<Prey>, Error=SpiderError>>>
 }
 
-impl<'a> futures::Stream for Web<'a> {
-    type Item = Prey;
-    type Error = ();
+impl<'a> Future for Web<'a> {
+    type Item = Vec<Prey>;
+    type Error = SpiderError;
 
-    fn poll(&mut self) -> Poll<Option<Self::Item>, Self::Error> {
+    fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
+
         unimplemented!()
     }
 }

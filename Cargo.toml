@@ -6,6 +6,8 @@ description = "Yet another search engine results crawler written in Rust."
 edition = "2018"
 
 [dependencies]
+failure = "0.1.5"
+
 serde = "1"
 serde_derive = "1"
 json5 = "0.2.2"
